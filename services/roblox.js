@@ -293,9 +293,9 @@ async function getPresences(userIds, cookie = '') {
   const map = new Map();
   if (unique.length === 0) return map;
 
-  // Roblox accepts up to 100 user IDs per call.
-  for (let i = 0; i < unique.length; i += 100) {
-    const chunk = unique.slice(i, i + 100);
+  // Use small batches to avoid Roblox presence API limits.
+  for (let i = 0; i < unique.length; i += 10) {
+    const chunk = unique.slice(i, i + 10);
     const data = await postJson(PRESENCE_API, { userIds: chunk }, cookie);
     for (const p of data.userPresences || []) {
       map.set(p.userId, {

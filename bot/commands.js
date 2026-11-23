@@ -27,7 +27,7 @@ const track = new SlashCommandBuilder().setName('track').setDescription('Manage 
   .addSubcommand(s => s.setName('usernotify').setDescription("Route one user's alerts to a dedicated channel").addStringOption(o => o.setName('username').setDescription('Tracked username').setRequired(true).setAutocomplete(true)).addChannelOption(o => o.setName('channel').setDescription('Dedicated alert channel').addChannelTypes(ChannelType.GuildText).setRequired(true)))
   .addSubcommand(s => s.setName('usernotify-clear').setDescription("Return one user's alerts to the default channel").addStringOption(o => o.setName('username').setDescription('Tracked username').setRequired(true).setAutocomplete(true)))
   .addSubcommand(s => s.setName('info').setDescription('Show tracker details').addStringOption(o => o.setName('username').setDescription('Tracked username').setRequired(true).setAutocomplete(true)))
-  .addSubcommand(s => s.setName('now').setDescription('Poll one tracked user now').addStringOption(o => o.setName('username').setDescription('Tracked username').setRequired(true).setAutocomplete(true)))
+  .addSubcommand(s => s.setName('now').setDescription('Poll all tracked users, or one user').addStringOption(o => o.setName('username').setDescription('Optional: tracked username').setRequired(false).setAutocomplete(true)))
   .addSubcommand(s => s.setName('search').setDescription('Search your watchlist').addStringOption(o => o.setName('query').setDescription('Partial username').setRequired(true)));
 
 const cookie = new SlashCommandBuilder().setName('cookie').setDescription('Manage this server cookie accounts')

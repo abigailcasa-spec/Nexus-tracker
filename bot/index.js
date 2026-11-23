@@ -663,8 +663,21 @@ async function track(i, client, t, s) {
   if (sub === 'now') {
     await i.deferReply({ flags: MessageFlags.Ephemeral });
     await t.pollOnce();
-    const snap = getSnapshot(t, u);
-    return i.editReply(snap ? { embeds: [buildEmbed(snap, { serverInfo: storeFor().getServerInfo(), compactLinks: storeFor().getCompactLinks() })], components: buildComponents(snap) || [] } : `${I.off} No status yet.`);
+
+    const snapshots = t.getSnapshot();
+
+    if (u) {
+      const snap = snapshots.find(x => x.username.toLowerCase() === u.toLowerCase());
+      return i.editReply(snap ? { embeds: [buildEmbed(snap, { serverInfo: storeFor().getServerInfo(), compactLinks: storeFor().getCompactLinks() })], components: buildComponents(snap) || [] } : `${I.off} No status yet for that user.`);
+    }
+
+    const total = snapshots.length;
+    const inGame = snapshots.filter(x => x.resolved && x.inGame).length;
+    const online = snapshots.filter(x => x.resolved && !x.inGame && x.status === 'Online').length;
+    const unresolved = snapshots.filter(x => !x.resolved).length;
+    const offline = total - inGame - online - unresolved;
+
+    return i.editReply(`✅ Refreshed **${total}** tracked users.\n🎮 In game: **${inGame}**\n🟢 Online: **${online}**\n🔴 Offline: **${offline}**\n⚠️ Unresolved: **${unresolved}**`);
   }
   if (sub === 'search') {
     const q = query.toLowerCase();

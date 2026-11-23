@@ -38,7 +38,6 @@ class Tracker {
     this.timer = this.reauthTimer = null;
     this.polling = false;
   }
-
   schedule(delay = this.intervalMs) {
     if (this.timer) clearTimeout(this.timer);
     this.timer = setTimeout(async () => {
@@ -237,13 +236,39 @@ class Tracker {
       catch (e) { this.transientFailureCount++; this.lastError = `avatar lookup: ${sanitizeError(e).message}`; }
 
       const byAccount = new Map();
-      for (const u of users) {
-        if (!u.accountId) continue;
-        if (!byAccount.has(u.accountId)) byAccount.set(u.accountId, []);
-        byAccount.get(u.accountId).push(u);
-      }
+const publicUsers = [];
 
-      const presence = new Map();
+for (const u of users) {
+  if (!u.accountId) {
+    publicUsers.push(u);
+    continue;
+  }
+  if (!byAccount.has(u.accountId)) byAccount.set(u.accountId, []);
+  byAccount.get(u.accountId).push(u);
+}
+
+const presence = new Map();
+
+// Try public presence for users without a linked account.
+if (publicUsers.length) {
+  const publicIds = publicUsers
+    .map(u => resolved.get(u.username.toLowerCase())?.id)
+    .filter(Boolean);
+
+  if (publicIds.length) {
+    try {
+      const ps = await roblox.retryable(
+        () => roblox.getPresences(publicIds),
+        'public presence'
+      );
+      for (const [id, p] of ps) presence.set(`public:${id}`, p);
+    } catch (e) {
+      this.transientFailureCount++;
+      this.lastError = `public presence: ${sanitizeError(e).message}`;
+    }
+  }
+}
+      
       const accountErrors = new Map();
       for (const [accountId, group] of byAccount) {
         const account = accountMap.get(accountId);
@@ -371,18 +396,18 @@ class Tracker {
           this.io?.emit('poll-error', { username: info.name, error: accountError.message });
           continue;
         }
-        const pkey = account ? `${account.id}:${info.id}` : null;
-        if (account && !presence.has(pkey)) {
+        const pkey = account ? `${account.id}:${info.id}` : `public:${info.id}`;
+        if (!presence.has(pkey)) {
           // Roblox returned a response that is missing this cookie-backed user.
           // Presence can come back incomplete/weird during API trouble; do NOT
           // assume they went offline. Hold last-known state instead.
           this.transientFailureCount++;
           this.lastError = `Incomplete presence data for ${info.name}`;
-          this.recordUserError(u.username, 'presence', this.lastError, { stage: 'presence', accountId: account.id, accountName: account.name });
+          this.recordUserError(u.username, 'presence', this.lastError, { stage: 'presence', accountId: account?.id, accountName: account?.name });
           this.io?.emit('poll-error', { username: info.name, error: this.lastError });
           continue;
         }
-        const p = account ? presence.get(pkey) : { type: -1, label: 'No cookie account' };
+        const p = presence.get(pkey);
         this.clearUserError(u.username);
         const inGame = p.type === 2;
         const place = p.rootPlaceId || p.placeId || null;
@@ -565,3 +590,4 @@ function getEventType(prev, next) {
 
 Tracker.getEventType = getEventType;
 module.exports = Tracker;
+
